@@ -1,0 +1,51 @@
+#stage {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-gap: 10px;
+}
+
+.tom-drums {
+  height: 100px;
+  border-radius: 50%;
+  background: rgb(4, 98, 89);
+}
+
+.snare-drums {
+  height: 100px;
+  border-radius: 50%;
+  background: rgb(151, 19, 1);
+}
+
+.kick-drums {
+  height: 100px;
+  border-radius: 50%;
+  background: rgb(21, 123, 1);
+}
+
+.hihat-drums {
+  height: 100px;
+  border-radius: 50%;
+  background: rgb(159, 159, 0);
+}
+
+.visualizer {
+  height: 100px;
+  border-radius: 50%;
+  background: rgb(255, 255, 255);
+}
+
+.startstop {
+  height: 100px;
+  width: 30%;
+  border-radius: 50%;
+  background: rgb(159, 0, 125);
+}
+
+.BPM {
+  height: 100px;
+  width: 30%;
+  border-radius: 50%;
+  background: rgb(77, 159, 0);
+}
+
+
