@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
   <title>Web Drum Machine</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
   <main class="app">
@@ -109,10 +110,10 @@
       <h2>Save / Load Project</h2>
 
       <div class="file-controls">
-        <button id="exportProject">Export JSON</button>
+        <button id="exportProject">Export data</button>
 
         <label class="file-label">
-          Import JSON
+          Import data
           <input id="importProject" type="file" accept=".json,application/json">
         </label>
 
@@ -125,12 +126,68 @@
 
       <div class="effects-grid">
         <label>Delay <input id="delay" type="range" min="0" max="1" step="0.01" value="0"></label>
+        <label>Reverb <input id="reverb" type="range" min="0" max="1" step="0.01" value="0"></label>
+        <label>Distortion <input id="distortion" type="range" min="0" max="100" step="1" value="0"></label>
         <label>Compressor <input id="compressor" type="range" min="-60" max="0" step="1" value="-24"></label>
         <label>EQ Low <input id="eqLow" type="range" min="-20" max="20" step="1" value="0"></label>
         <label>EQ Mid <input id="eqMid" type="range" min="-20" max="20" step="1" value="0"></label>
         <label>EQ High <input id="eqHigh" type="range" min="-20" max="20" step="1" value="0"></label>
       </div>
     </section>
+
+    <section class="panel">
+      <h2>Custom Sample Loader</h2>
+
+      <div class="drop-zone" id="dropZone">
+        <label style="cursor: pointer; display: block;">
+          Drag & Drop audio files here (WAV, MP3) or click to upload
+          <input type="file" id="sampleUpload" multiple accept="audio/*" style="display: none">
+          <button id="uploadBtn" class="primary-btn" style="margin-top: 10px;">Upload Samples</button>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Samples</h2>
+      
+      <div id="sampleList" class="sample-list"></div>
+      
+      <div id="sampleEditor" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #2e2e3a;">
+        <h3>Sample Editor</h3>
+        
+        <select id="editSampleSelect">
+          <option value="kick">Kick</option>
+          <option value="snare">Snare</option>
+          <option value="hihat">Hi-Hat</option>
+          <option value="tom">Tom</option>
+        </select>
+
+        <div class="sample-editor-controls">
+          <label>
+            Volume:
+            <input type="range" id="sampleVolume" min="0" max="200" value="100" step="1">
+            <span id="volumeValue">100</span>%
+          </label>
+
+          <label>
+            Pitch:
+            <input type="range" id="samplePitch" min="0.5" max="2" value="1" step="0.01">
+            <span id="pitchValue">1.00</span>x
+          </label>
+
+          <label>
+            Reverse:
+            <input type="checkbox" id="sampleReverse">
+          </label>
+
+          <div class="editor-buttons">
+            <button id="saveSampleSettings">Save Settings</button>
+            <button id="resetSample">Reset to Default</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <script type="module" src="app.js"></script>

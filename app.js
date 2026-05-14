@@ -22,9 +22,27 @@ let patterns = {
     hihat: [0, 1, 1, 1, 0, 1, 1, 1],
     tom: [0, 0, 0, 1, 0, 1, 1, 1]
   },
-  B: defaultPattern(8),
-  C: defaultPattern(8),
-  D: defaultPattern(8)
+  B:{
+    length: 8,
+    kick: [1, 1, 0, 1, 1, 0, 1, 0],
+    snare: [0, 0, 1, 0, 0, 1, 0, 1],
+    hihat: [1, 1, 1, 1, 1, 1, 1, 1],
+    tom: [0, 0, 0, 0, 0, 0, 0, 0]
+  },
+  C: {
+    length: 8,
+    kick: [1, 0, 0, 1, 0, 1, 0, 0],
+    snare: [0, 0, 1, 0, 0, 0, 1, 1],
+    hihat: [0, 1, 0, 1, 0, 1, 0, 1],
+    tom: [0, 1, 0, 0, 0, 0, 0, 1]
+  },
+  D: {
+    length: 8,
+    kick: [1, 0, 0, 0, 0, 1, 0, 0],
+    snare: [0, 0, 1, 0, 0, 0, 1, 0],
+    hihat: [0, 1, 0, 1, 0, 1, 0, 1],
+    tom: [0, 0, 0, 1, 0, 0, 0, 0]
+  }
 };
 
 let currentPattern = "A";
@@ -35,12 +53,21 @@ let songPatternIndex = 0;
 
 const effects = {
   delay: 0,
+  reverb: 0, 
+  distortion: 0,
   compressor: -24,
   eqLow: 0,
   eqMid: 0,
   eqHigh: 0
 };
 
+const customSamples = new Map();
+const sampleSettings = {
+  kick: { volume: 100, pitch: 1, reverse: false },
+  snare: { volume: 100, pitch: 1, reverse: false },
+  hihat: { volume: 100, pitch: 1, reverse: false },
+  tom: { volume: 100, pitch: 1, reverse: false }
+};
 
 // =======================
 // AUDIO EFFECTS SETUP
@@ -72,6 +99,48 @@ delayFeedback.gain.value = 0;
 const delayWet = audioContext.createGain();
 delayWet.gain.value = 0;
 
+const reverbNode = audioContext.createConvolver();
+const reverbGain = audioContext.createGain();
+reverbGain.gain.value = 0;
+const dryGain = audioContext.createGain();
+dryGain.gain.value = 1;
+
+const distortionNode = audioContext.createWaveShaper();
+const distortionGain = audioContext.createGain();
+distortionGain.gain.value = 0;
+
+async function createReverbImpulse(duration = 2, decay = 2) {
+  const sampleRate = audioContext.sampleRate;
+  const length = sampleRate * duration;
+  const impulse = audioContext.createBuffer(2, length, sampleRate);
+  
+  for (let channel = 0; channel < 2; channel++) {
+    const channelData = impulse.getChannelData(channel);
+    for (let i = 0; i < length; i++) {
+      channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+    }
+  }
+  
+  reverbNode.buffer = impulse;
+}
+createReverbImpulse(2, 2);
+
+function createDistortionCurve(amount) {
+  const k = typeof amount === 'number' ? amount : 50;
+  const n_samples = 44100;
+  const curve = new Float32Array(n_samples);
+  const deg = Math.PI / 180;
+  
+  for (let i = 0; i < n_samples; i++) {
+    const x = i * 2 / n_samples - 1;
+    curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+}
+
+distortionNode.curve = createDistortionCurve(0);
+distortionNode.oversample = '4x';
+
 
 // =======================
 // AUDIO ROUTING
@@ -81,7 +150,16 @@ masterGain.connect(lowEQ);
 lowEQ.connect(midEQ);
 midEQ.connect(highEQ);
 highEQ.connect(compressor);
-compressor.connect(audioContext.destination);
+
+compressor.connect(dryGain);
+compressor.connect(reverbGain);
+
+reverbGain.connect(reverbNode);
+reverbNode.connect(distortionGain);
+distortionGain.connect(distortionNode);
+distortionNode.connect(audioContext.destination);
+
+dryGain.connect(audioContext.destination);
 
 highEQ.connect(delayNode);
 delayNode.connect(delayFeedback);
@@ -103,6 +181,20 @@ const swingSlider = document.getElementById("swingSlider");
 const swingValue = document.getElementById("swingValue");
 const patternLength = document.getElementById("patternLength");
 const autosaveStatus = document.getElementById("autosaveStatus");
+const dropZone = document.getElementById('dropZone');
+const sampleUpload = document.getElementById('sampleUpload');
+const uploadBtn = document.getElementById('uploadBtn');
+const sampleList = document.getElementById('sampleList');
+const sampleEditor = document.getElementById('sampleEditor');
+const editSampleSelect = document.getElementById('editSampleSelect');
+const sampleVolume = document.getElementById('sampleVolume');
+const volumeValue = document.getElementById('volumeValue');
+const samplePitch = document.getElementById('samplePitch');
+const pitchValue = document.getElementById('pitchValue');
+const sampleReverse = document.getElementById('sampleReverse');
+const saveSampleSettings = document.getElementById('saveSampleSettings');
+const resetSample = document.getElementById('resetSample');
+const playTestSample = document.getElementById('playTestSample');
 
 
 // =======================
@@ -156,23 +248,27 @@ function playSound(soundName, time = 0) {
     return;
   }
 
+  const settings = sampleSettings[soundName];
   const source = audioContext.createBufferSource();
+  const gainNode = audioContext.createGain();
+
+  source.playbackRate.value = settings.pitch;
+  gainNode.gain.value = settings.volume / 100;
 
   source.buffer = buffer;
-  source.connect(masterGain);
+  source.connect(gainNode);
+  gainNode.connect(masterGain);
 
   activeSources.push(source);
 
   source.onended = () => {
     const index = activeSources.indexOf(source);
-
     if (index !== -1) {
       activeSources.splice(index, 1);
     }
   };
 
   source.start(time);
-
   triggerMeter(soundName);
 }
 
@@ -194,6 +290,16 @@ function updateAudioEffects() {
   lowEQ.gain.value = effects.eqLow;
   midEQ.gain.value = effects.eqMid;
   highEQ.gain.value = effects.eqHigh;
+  
+  reverbGain.gain.value = effects.reverb;
+  dryGain.gain.value = 1 - effects.reverb;
+  
+  if (effects.distortion > 0) {
+    distortionNode.curve = createDistortionCurve(effects.distortion);
+    distortionGain.gain.value = 1;
+  } else {
+    distortionGain.gain.value = 0;
+  }
 }
 
 
@@ -268,6 +374,7 @@ function renderGrid() {
     row.appendChild(label);
 
     for (let step = 0; step < pattern.length; step++) {
+
       const button = document.createElement("button");
 
       button.className = "step";
@@ -280,13 +387,10 @@ function renderGrid() {
 
       button.addEventListener("mousedown", () => {
         pattern[track][step] = pattern[track][step] === 1 ? 0 : 1;
-
         sequencer.setPattern(pattern);
-
         button.classList.toggle("active");
 
         playSound(track);
-
         autosave();
       });
 
@@ -391,12 +495,26 @@ patternLength.addEventListener("change", () => {
   const oldPattern = patterns[currentPattern];
   const newPattern = defaultPattern(newLength);
 
-  tracks.forEach(track => {
-    for (let i = 0; i < Math.min(oldPattern.length, newLength); i++) {
-      newPattern[track][i] = oldPattern[track][i];
-    }
-  });
-
+  if (oldPattern.length == 8 && newLength == 16) {
+    tracks.forEach(track => {
+      for (let i = 0; i < 8; i++) {
+        newPattern[track][i] = oldPattern[track][i];
+        newPattern[track][i+8] = oldPattern[track][i];
+      }
+    });
+  } else if (oldPattern.length == 16 && newLength == 8) {
+    tracks.forEach(track => {
+      for (let i = 0; i < 8; i++) {
+        newPattern[track][i] = oldPattern[track][i];
+      }
+    });
+  } else {
+    tracks.forEach(track => {
+      for (let i = 0; i < newLength; i++) {
+        newPattern[track][i] = oldPattern[track][i];
+      }
+    });
+  }
   patterns[currentPattern] = newPattern;
   sequencer.setPattern(newPattern);
 
@@ -546,57 +664,87 @@ function highlightCurrentSongItem() {
 // =======================
 // SAVE / LOAD PROJECT
 // =======================
-
-document.getElementById("exportProject").addEventListener("click", () => {
+document.getElementById("exportProject").addEventListener("click", async () => {
+  const zip = new JSZip();
+  
   const project = getProjectData();
-
-  const blob = new Blob([JSON.stringify(project, null, 2)], {
-    type: "application/json"
-  });
-
-  const url = URL.createObjectURL(blob);
+  zip.file("project.json", JSON.stringify(project, null, 2));
+  
+  const samplesFolder = zip.folder("samples");
+  let sampleCount = 0;
+  
+  for (const [track, sample] of customSamples.entries()) {
+    const wavBlob = await audioBufferToWavBlob(sample.buffer);
+    samplesFolder.file(`${track}.wav`, wavBlob);
+    sampleCount++;
+  }
+  
+  const zipBlob = await zip.generateAsync({ type: "blob" });
+  const url = URL.createObjectURL(zipBlob);
   const link = document.createElement("a");
-
   link.href = url;
-  link.download = "drum-project.json";
+  link.download = "drum-project.zip";
   link.click();
-
   URL.revokeObjectURL(url);
 });
 
-document.getElementById("importProject").addEventListener("change", event => {
+document.getElementById("importProject").addEventListener("change", async (event) => {
   const file = event.target.files[0];
-
   if (!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = () => {
+  
+  if (file.name.endsWith('.zip')) {
     try {
-      const project = JSON.parse(reader.result);
-      loadProjectData(project);
-      alert("Project loaded successfully!");
+      const zip = await JSZip.loadAsync(file);
+      
+      // Load JSON
+      const jsonFile = zip.file("project.json");
+      const projectData = JSON.parse(await jsonFile.async("string"));
+      
+      // Load samples from samples folder
+      const samplesFolder = zip.folder("samples");
+      if (samplesFolder) {
+        for (const track of ['kick', 'snare', 'hihat', 'tom']) {
+          const sampleFile = samplesFolder.file(`${track}.wav`);
+          if (sampleFile) {
+            const arrayBuffer = await sampleFile.async("arraybuffer");
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            await loadCustomSampleFromBuffer(track, audioBuffer, `${track}.wav`);
+          }
+        }
+      }
+      
+      loadProjectData(projectData);
     } catch (error) {
-      console.error("Invalid JSON file:", error);
-      alert("Invalid JSON file.");
+      console.error(error);
     }
-  };
-
-  reader.readAsText(file);
-
+  } else {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const project = JSON.parse(reader.result);
+        loadProjectData(project);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    reader.readAsText(file);
+  }
+  
   event.target.value = "";
 });
 
 function getProjectData() {
-  patterns[currentPattern] = sequencer.getPattern();
+  const updatedPatterns = structuredClone(patterns);
+  updatedPatterns[currentPattern] = sequencer.getPattern();
 
   return {
     bpm: sequencer.bpm,
     swing: sequencer.swing,
     currentPattern,
-    patterns,
-    songOrder,
-    effects
+    patterns: updatedPatterns,
+    songOrder: structuredClone(songOrder),
+    effects: structuredClone(effects),
+    sampleSettings: structuredClone(sampleSettings)
   };
 }
 
@@ -606,6 +754,8 @@ function loadProjectData(project) {
   currentPattern = project.currentPattern || "A";
 
   effects.delay = project.effects?.delay ?? 0;
+  effects.reverb = project.effects?.reverb ?? 0;
+  effects.distortion = project.effects?.distortion ?? 0;
   effects.compressor = project.effects?.compressor ?? -24;
   effects.eqLow = project.effects?.eqLow ?? 0;
   effects.eqMid = project.effects?.eqMid ?? 0;
@@ -627,10 +777,15 @@ function loadProjectData(project) {
     btn.classList.toggle("active", btn.dataset.pattern === currentPattern);
   });
 
+  if (project.sampleSettings) {
+    Object.assign(sampleSettings, project.sampleSettings);
+  }
+
   updateEffectsUI();
   updateAudioEffects();
   renderGrid();
   renderSongOrder();
+  updateSampleList();
   autosave();
 }
 
@@ -644,6 +799,71 @@ function updateEffectsUI() {
   });
 }
 
+async function audioBufferToWavBlob(buffer) {
+  const numberOfChannels = buffer.numberOfChannels;
+  const length = buffer.length;
+  const sampleRate = buffer.sampleRate;
+  const channelData = [];
+  
+  for (let i = 0; i < numberOfChannels; i++) {
+    channelData.push(buffer.getChannelData(i));
+  }
+  
+  const wavBytes = wavBytesFromAudioBuffer(channelData, length, sampleRate, numberOfChannels);
+  return new Blob([wavBytes], { type: 'audio/wav' });
+}
+
+function wavBytesFromAudioBuffer(channelData, length, sampleRate, numChannels) {
+  const bufferLength = 44 + (length * numChannels * 2);
+  const view = new DataView(new ArrayBuffer(bufferLength));
+  
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, bufferLength - 8, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, length * numChannels * 2, true);
+  
+  let offset = 44;
+  for (let i = 0; i < length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = Math.max(-1, Math.min(1, channelData[ch][i]));
+      view.setInt16(offset, sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+  
+  return view.buffer;
+}
+
+function writeString(view, offset, str) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+async function loadCustomSampleFromBuffer(track, audioBuffer, fileName) {
+  let processedBuffer = audioBuffer;
+  if (sampleSettings[track].reverse) {
+    processedBuffer = reverseBuffer(audioBuffer);
+  }
+  
+  customSamples.set(track, {
+    buffer: processedBuffer,
+    fileName: fileName,
+    settings: { ...sampleSettings[track] }
+  });
+  
+  buffers[track] = processedBuffer;
+  updateSampleList();
+}
 
 // =======================
 // RESET PROJECT
@@ -654,17 +874,35 @@ function resetProject() {
   stopAllSounds();
 
   patterns = {
-    A: {
-      length: 8,
-      kick: [1, 1, 0, 0, 0, 0, 0, 0],
-      snare: [0, 0, 0, 0, 1, 0, 0, 0],
-      hihat: [0, 1, 1, 1, 0, 1, 1, 1],
-      tom: [0, 0, 0, 1, 0, 1, 1, 1]
-    },
-    B: defaultPattern(8),
-    C: defaultPattern(8),
-    D: defaultPattern(8)
-  };
+  A: {
+    length: 8,
+    kick: [1, 1, 0, 0, 0, 0, 0, 0],
+    snare: [0, 0, 0, 0, 1, 0, 0, 0],
+    hihat: [0, 1, 1, 1, 0, 1, 1, 1],
+    tom: [0, 0, 0, 1, 0, 1, 1, 1]
+  },
+  B:{
+    length: 8,
+    kick: [1, 1, 0, 1, 1, 0, 1, 0],
+    snare: [0, 0, 1, 0, 0, 1, 0, 1],
+    hihat: [1, 1, 1, 1, 1, 1, 1, 1],
+    tom: [0, 0, 0, 0, 0, 0, 0, 0]
+  },
+  C: {
+    length: 8,
+    kick: [1, 0, 0, 1, 0, 1, 0, 0],
+    snare: [0, 0, 1, 0, 0, 0, 1, 1],
+    hihat: [0, 1, 0, 1, 0, 1, 0, 1],
+    tom: [0, 1, 0, 0, 0, 0, 0, 1]
+  },
+  D: {
+    length: 8,
+    kick: [1, 0, 0, 0, 0, 1, 0, 0],
+    snare: [0, 0, 1, 0, 0, 0, 1, 0],
+    hihat: [0, 1, 0, 1, 0, 1, 0, 1],
+    tom: [0, 0, 0, 1, 0, 0, 0, 0]
+  }
+};
 
   currentPattern = "A";
   copiedPattern = null;
@@ -698,6 +936,10 @@ function resetProject() {
     btn.classList.toggle("active", btn.dataset.pattern === "A");
   });
 
+  ['kick', 'snare', 'hihat', 'tom'].forEach(track => {
+    resetTrackToDefault(track);
+  });
+
   updateEffectsUI();
   updateAudioEffects();
   renderGrid();
@@ -717,7 +959,7 @@ function autosave() {
   autosaveStatus.textContent = "Autosaved";
 }
 
-["delay", "compressor", "eqLow", "eqMid", "eqHigh"].forEach(id => {
+["delay", "reverb", "distortion", "compressor", "eqLow", "eqMid", "eqHigh"].forEach(id => {
   document.getElementById(id).addEventListener("input", event => {
     effects[id] = Number(event.target.value);
 
@@ -729,11 +971,304 @@ function autosave() {
 
 const savedProject = localStorage.getItem("drumProject");
 
-if (savedProject) {
-  loadProjectData(JSON.parse(savedProject));
+
+// =======================
+// CUSTOM SAMPLE LOADER FUNCTIONS
+// =======================
+
+let currentEditTrack = 'kick';
+
+function reverseBuffer(buffer) {
+  const reversedBuffer = audioContext.createBuffer(
+    buffer.numberOfChannels,
+    buffer.length,
+    buffer.sampleRate
+  );
+  
+  for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    const reversedData = reversedBuffer.getChannelData(channel);
+    for (let i = 0; i < channelData.length; i++) {
+      reversedData[i] = channelData[channelData.length - 1 - i];
+    }
+  }
+  return reversedBuffer;
 }
 
+async function loadCustomSample(track, file) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    
+    let processedBuffer = audioBuffer;
+    if (sampleSettings[track].reverse) {
+      processedBuffer = reverseBuffer(audioBuffer);
+    }
+    
+    customSamples.set(track, {
+      buffer: processedBuffer,
+      fileName: file.name,
+      settings: { ...sampleSettings[track] }
+    });
+    
+    buffers[track] = processedBuffer;
+    updateSampleList();
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+
+function updateSampleList() {
+  if (!sampleList) return;
+  
+  sampleList.innerHTML = '';
+  const trackNames = ['kick', 'snare', 'hihat', 'tom'];
+  
+  trackNames.forEach(track => {
+    const customSample = customSamples.get(track);
+    const settings = sampleSettings[track];
+    
+    const item = document.createElement('div');
+    item.className = 'sample-item';
+    item.onclick = () => {
+      document.querySelectorAll('.sample-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      currentEditTrack = track;
+      loadSampleToEditor(track);
+      sampleEditor.style.display = 'block';
+    };
+    
+    item.innerHTML = `
+      <div class="sample-name">${track.toUpperCase()}</div>
+      <div class="sample-file">${customSample ? customSample.fileName : 'Default sample'}</div>
+      <div class="sample-stats">Vol: ${settings.volume}% | Pitch: ${settings.pitch}x${settings.reverse ? ' | 🔁 Reversed' : ''}</div>
+    `;
+    
+    sampleList.appendChild(item);
+  });
+}
+
+function loadSampleToEditor(track) {
+  const settings = sampleSettings[track];
+  editSampleSelect.value = track;
+  sampleVolume.value = settings.volume;
+  volumeValue.textContent = settings.volume;
+  samplePitch.value = settings.pitch;
+  pitchValue.textContent = settings.pitch.toFixed(2);
+  sampleReverse.checked = settings.reverse;
+  currentEditTrack = track;
+}
+
+function resetTrackToDefault(track) {
+  sampleSettings[track] = { volume: 100, pitch: 1, reverse: false };
+  customSamples.delete(track);
+
+  loadAudio(track, `./sounds/${track}.wav`);
+  updateSampleList();
+  
+  if (currentEditTrack === track) {
+    loadSampleToEditor(track);
+  }
+}
+
+function testPlayCurrentSample() {
+  playSound(currentEditTrack, 0);
+}
+
+function playPreview() {
+  const tempSettings = {
+    volume: parseInt(sampleVolume.value),
+    pitch: parseFloat(samplePitch.value),
+    reverse: sampleReverse.checked
+  };
+  
+  const buffer = buffers[currentEditTrack];
+  if (!buffer) {
+    return;
+  }
+  
+  const source = audioContext.createBufferSource();
+  const gainNode = audioContext.createGain();
+  
+  source.playbackRate.value = tempSettings.pitch;
+  gainNode.gain.value = tempSettings.volume / 100;
+  
+  source.buffer = buffer;
+  source.connect(gainNode);
+  gainNode.connect(masterGain);
+  
+  activeSources.push(source);
+  
+  source.onended = () => {
+    const index = activeSources.indexOf(source);
+    if (index !== -1) {
+      activeSources.splice(index, 1);
+    }
+  };
+  
+  source.start(0);
+  triggerMeter(currentEditTrack);
+}
+
+function autoAssignSample(file) {
+  const fileName = file.name.toLowerCase();
+  
+  if (fileName.includes('kick') || fileName.includes('bass')) {
+    return 'kick';
+  }
+  if (fileName.includes('snare') || fileName.includes('clap')) {
+    return 'snare';
+  }
+  if (fileName.includes('hihat') || fileName.includes('cymbal')) {
+    return 'hihat';
+  }
+  if (fileName.includes('tom') || fileName.includes('tomtom')) {
+    return 'tom';
+  }
+  return null; 
+}
+
+if (dropZone) {
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover');
+  });
+  
+  dropZone.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
+    let autoAssigned = false;
+    
+    for (const file of files) {
+      const autoTrack = autoAssignSample(file);
+      if (autoTrack) {
+        await loadCustomSample(autoTrack, file);
+        autoAssigned = true;
+      }
+    }
+    
+    for (const file of files) {
+      const autoTrack = autoAssignSample(file);
+      if (!autoTrack) {
+        const track = prompt(`Could not auto-assign "${file.name}". Assign to which track?\n(kick, snare, hihat, tom)`, 'kick');
+        if (track && ['kick', 'snare', 'hihat', 'tom'].includes(track.toLowerCase())) {
+          await loadCustomSample(track.toLowerCase(), file);
+        }
+      }
+    }
+  });
+  
+  dropZone.addEventListener('click', () => {
+    sampleUpload.click();
+  });
+  
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sampleUpload.click();
+    });
+  }
+  
+  if (sampleUpload) {
+    sampleUpload.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      let autoAssigned = false;
+      
+      for (const file of files) {
+        const autoTrack = autoAssignSample(file);
+        if (autoTrack) {
+          await loadCustomSample(autoTrack, file);
+          autoAssigned = true;
+        }
+      }
+      
+      for (const file of files) {
+        const autoTrack = autoAssignSample(file);
+        if (!autoTrack) {
+          const track = prompt(`Could not auto-assign "${file.name}". Assign to which track?\n(kick, snare, hihat, tom)`, 'kick');
+          if (track && ['kick', 'snare', 'hihat', 'tom'].includes(track.toLowerCase())) {
+            await loadCustomSample(track.toLowerCase(), file);
+          }
+        }
+      } 
+      sampleUpload.value = '';
+    });
+  }
+}
+
+if (saveSampleSettings) {
+  saveSampleSettings.addEventListener('click', async () => {
+    const newSettings = {
+      volume: parseInt(sampleVolume.value),
+      pitch: parseFloat(samplePitch.value),
+      reverse: sampleReverse.checked
+    };
+    
+    sampleSettings[currentEditTrack] = newSettings;
+    
+    const customSample = customSamples.get(currentEditTrack);
+    if (customSample) {
+      customSample.settings = newSettings;
+      let processedBuffer = customSample.buffer;
+      if (newSettings.reverse) {
+        processedBuffer = reverseBuffer(customSample.buffer);
+      }
+      buffers[currentEditTrack] = processedBuffer;
+    }
+    
+    updateSampleList();
+  });
+}
+
+if (resetSample) {
+  resetSample.addEventListener('click', () => {
+    resetTrackToDefault(currentEditTrack);
+  });
+}
+
+if (editSampleSelect) {
+  editSampleSelect.addEventListener('change', (e) => {
+    currentEditTrack = e.target.value;
+    loadSampleToEditor(currentEditTrack);
+  });
+}
+
+if (sampleVolume) {
+  sampleVolume.addEventListener('input', () => {
+    volumeValue.textContent = sampleVolume.value;
+    playPreview();
+  });
+}
+
+if (samplePitch) {
+  samplePitch.addEventListener('input', () => {
+    pitchValue.textContent = parseFloat(samplePitch.value).toFixed(2);
+    playPreview();
+  });
+}
+
+if (sampleReverse) {
+  sampleReverse.addEventListener('change', () => {
+    playPreview();
+  });
+}
+
+
+// =======================
+// Initialization
+// =======================
 renderGrid();
 renderSongOrder();
 updateEffectsUI();
 updateAudioEffects();
+updateSampleList();

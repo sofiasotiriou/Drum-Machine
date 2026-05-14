@@ -26,6 +26,7 @@ export class Sequencer {
     this.hihat = [...pattern.hihat];
     this.tom = [...pattern.tom];
     this.stepsPerBeat = pattern.length;
+    this.currentStep = 0;
   }
 
   getPattern() {

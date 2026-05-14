@@ -78,7 +78,7 @@ label {
 }
 
 .pattern-btn.active {
-  background: #2563eb;
+  background: #7c3aed;
 }
 
 .sequencer-grid {
@@ -211,4 +211,88 @@ label {
   .step {
     height: 38px;
   }
+}
+
+.drop-zone {
+  border: 2px dashed #55556a;
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  color: #c4c4cc;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.drop-zone.dragover {
+  border-color: #38bdf8;
+  background: #1e293b;
+}
+
+.sample-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sample-item {
+  background: #2c2c38;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sample-item:hover {
+  background: #3c3c4a;
+  transform: translateY(-2px);
+}
+
+.sample-item.active {
+  background: #7c3aed;
+  border-left: 4px solid #ae88f1;
+}
+
+.sample-name {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.sample-file {
+  font-size: 12px;
+  color: #a0a0b0;
+  margin-bottom: 8px;
+}
+
+.sample-stats {
+  font-size: 11px;
+  color: #c4c4cc;
+}
+
+.sample-editor-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.sample-editor-controls label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-direction: row;
+}
+
+.sample-editor-controls input[type="range"] {
+  flex: 1;
+}
+
+.editor-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#editSampleSelect {
+  display: none;
 }
