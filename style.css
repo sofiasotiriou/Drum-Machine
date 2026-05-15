@@ -67,6 +67,25 @@ button:hover,
   gap: 16px;
   align-items: center;
 }
+.pattern-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pattern-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.right-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
 
 label {
   display: flex;

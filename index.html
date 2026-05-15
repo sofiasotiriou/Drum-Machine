@@ -40,21 +40,25 @@
       <h2>Pattern Sequencer</h2>
 
       <div class="pattern-controls">
-        <button class="pattern-btn active" data-pattern="A">Pattern A</button>
-        <button class="pattern-btn" data-pattern="B">Pattern B</button>
-        <button class="pattern-btn" data-pattern="C">Pattern C</button>
-        <button class="pattern-btn" data-pattern="D">Pattern D</button>
+        <div class="pattern-buttons">
+          <button class="pattern-btn active" data-pattern="A">Pattern A</button>
+          <button class="pattern-btn" data-pattern="B">Pattern B</button>
+          <button class="pattern-btn" data-pattern="C">Pattern C</button>
+          <button class="pattern-btn" data-pattern="D">Pattern D</button>
+        </div>
 
-        <button id="copyPattern">Copy</button>
-        <button id="pastePattern">Paste</button>
+        <div class="right-controls">
+          <button id="copyPattern">Copy</button>
+          <button id="pastePattern">Paste</button>
 
-        <label>
-          Length
-          <select id="patternLength">
-            <option value="8">8 steps</option>
-            <option value="16">16 steps</option>
-          </select>
-        </label>
+          <label>
+            Length
+            <select id="patternLength">
+              <option value="8">8 steps</option>
+              <option value="16">16 steps</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div id="beatVisualiser" class="beat-visualiser"></div>
