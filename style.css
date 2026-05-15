@@ -61,9 +61,7 @@ button:hover,
 
 .controls,
 .pattern-controls,
-.song-controls,
-.file-controls,
-.sample-controls {
+.song-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
@@ -120,6 +118,8 @@ label {
   grid-template-columns: repeat(var(--steps), 1fr);
   gap: 8px;
   margin-top: 16px;
+  margin-left: 88px;
+  width: calc(100% - 88px);
 }
 
 .beat-dot {
@@ -190,10 +190,6 @@ label {
   gap: 16px;
 }
 
-.file-label input {
-  display: none;
-}
-
 #sampleList {
   padding-left: 20px;
 }
@@ -219,7 +215,6 @@ label {
   padding: 30px;
   text-align: center;
   color: #c4c4cc;
-  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -295,4 +290,79 @@ label {
 
 #editSampleSelect {
   display: none;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.autosave-status {
+  font-size: 15px;
+  color: #888;
+}
+
+.project-controls {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start; 
+}
+
+.export-btn {
+  flex: 0 0 auto;
+  padding: 30px 50px;
+  margin-top: 25px;
+  font-size: 14px;
+  font-weight: bold;
+  background: #30303d;
+  border-radius: 12px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+  height: auto;
+}
+
+.export-btn:hover {
+  background: #3c3c4a;
+}
+
+#importDropZone {
+  flex: 2;
+  margin: 0;
+  transition: all 0.2s ease;
+}
+
+#importDropZone.dragover {
+  border-color: #38bdf8;
+  background: #1e293b;
+}
+
+#importDropZone label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  font-size: 14px;
+}
+
+#import-btn {
+  width: auto;
+  min-width: 160px;
+  padding: 12px 24px;
+  margin-top: 12px;
+  font-size: 14px;
+  background: #30303d;
+  border-radius: 16px;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+#import-btn:hover {
+  background: #3c3c4a;
 }

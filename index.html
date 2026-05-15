@@ -107,17 +107,21 @@
     </section>
 
     <section class="panel">
-      <h2>Save / Load Project</h2>
-
-      <div class="file-controls">
-        <button id="exportProject">Export data</button>
-
-        <label class="file-label">
-          Import data
-          <input id="importProject" type="file" accept=".json,application/json">
-        </label>
-
-        <span id="autosaveStatus">Autosave ready</span>
+      <div class="panel-header">
+        <h2>Save / Load Project</h2>
+        <span id="autosaveStatus" class="autosave-status">Autosave ready</span>
+      </div>
+      
+      <div class="project-controls">
+        <button id="export-btn" class="export-btn">Export Project</button>
+        
+        <div class="drop-zone" id="importDropZone">
+          <label>
+            Drag & Drop here or click to import
+            <input type="file" id="drop-file" accept=".zip,.json,application/json" style="display: none">
+            <button id="import-btn" class="primary-btn">Import Project</button>
+          </label>
+        </div>
       </div>
     </section>
 
@@ -139,11 +143,11 @@
       <h2>Custom Sample Loader</h2>
 
       <div class="drop-zone" id="dropZone">
-        <label style="cursor: pointer; display: block;">
+        <div style="display: block;">
           Drag & Drop audio files here (WAV, MP3) or click to upload
           <input type="file" id="sampleUpload" multiple accept="audio/*" style="display: none">
-          <button id="uploadBtn" class="primary-btn" style="margin-top: 10px;">Upload Samples</button>
-        </label>
+        </div>
+        <button id="upload-btn" class="primary-btn" style="margin-top: 10px;">Upload Samples</button>
       </div>
     </section>
 

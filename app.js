@@ -183,7 +183,7 @@ const patternLength = document.getElementById("patternLength");
 const autosaveStatus = document.getElementById("autosaveStatus");
 const dropZone = document.getElementById('dropZone');
 const sampleUpload = document.getElementById('sampleUpload');
-const uploadBtn = document.getElementById('uploadBtn');
+const uploadBtn = document.getElementById('upload-btn');
 const sampleList = document.getElementById('sampleList');
 const sampleEditor = document.getElementById('sampleEditor');
 const editSampleSelect = document.getElementById('editSampleSelect');
@@ -194,7 +194,10 @@ const pitchValue = document.getElementById('pitchValue');
 const sampleReverse = document.getElementById('sampleReverse');
 const saveSampleSettings = document.getElementById('saveSampleSettings');
 const resetSample = document.getElementById('resetSample');
-const playTestSample = document.getElementById('playTestSample');
+const exportBtn = document.getElementById('export-btn');
+const importDropZone = document.getElementById('importDropZone');
+const importFileInput = document.getElementById('drop-file');
+const importBtn = document.getElementById('import-btn');
 
 
 // =======================
@@ -664,43 +667,86 @@ function highlightCurrentSongItem() {
 // =======================
 // SAVE / LOAD PROJECT
 // =======================
-document.getElementById("exportProject").addEventListener("click", async () => {
-  const zip = new JSZip();
-  
-  const project = getProjectData();
-  zip.file("project.json", JSON.stringify(project, null, 2));
-  
-  const samplesFolder = zip.folder("samples");
-  let sampleCount = 0;
-  
-  for (const [track, sample] of customSamples.entries()) {
-    const wavBlob = await audioBufferToWavBlob(sample.buffer);
-    samplesFolder.file(`${track}.wav`, wavBlob);
-    sampleCount++;
-  }
-  
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  const url = URL.createObjectURL(zipBlob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "drum-project.zip";
-  link.click();
-  URL.revokeObjectURL(url);
-});
+if (exportBtn) {
+  exportBtn.addEventListener('click', async () => {
+    const zip = new JSZip();
+    
+    const project = getProjectData();
+    zip.file("project.json", JSON.stringify(project, null, 2));
+    
+    const samplesFolder = zip.folder("samples");
+    let sampleCount = 0;
+    
+    for (const [track, sample] of customSamples.entries()) {
+      const wavBlob = await audioBufferToWavBlob(sample.buffer);
+      samplesFolder.file(`${track}.wav`, wavBlob);
+      sampleCount++;
+    }
+    
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(zipBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "drum-project.zip";
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+}
 
-document.getElementById("importProject").addEventListener("change", async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
+if (importDropZone) {
+  importDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    importDropZone.classList.add('dragover');
+  });
   
+  importDropZone.addEventListener('dragleave', () => {
+    importDropZone.classList.remove('dragover');
+  });
+  
+  importDropZone.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    importDropZone.classList.remove('dragover');
+    
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    
+    await handleImportFile(file);
+  });
+}
+
+if (importDropZone) {
+  importDropZone.addEventListener('click', (e) => {
+    if (e.target === importBtn) return;
+    importFileInput.click();
+  });
+}
+
+if (importBtn) {
+  importBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    importFileInput.click();
+  });
+}
+
+if (importFileInput) {
+  importFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    await handleImportFile(file);
+    importFileInput.value = '';
+  });
+}
+
+async function handleImportFile(file) {
   if (file.name.endsWith('.zip')) {
     try {
       const zip = await JSZip.loadAsync(file);
       
-      // Load JSON
       const jsonFile = zip.file("project.json");
+      if (!jsonFile) throw new Error("No project.json found");
       const projectData = JSON.parse(await jsonFile.async("string"));
       
-      // Load samples from samples folder
       const samplesFolder = zip.folder("samples");
       if (samplesFolder) {
         for (const track of ['kick', 'snare', 'hihat', 'tom']) {
@@ -717,7 +763,7 @@ document.getElementById("importProject").addEventListener("change", async (event
     } catch (error) {
       console.error(error);
     }
-  } else {
+  } else if (file.name.endsWith('.json')) {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
@@ -729,9 +775,7 @@ document.getElementById("importProject").addEventListener("change", async (event
     };
     reader.readAsText(file);
   }
-  
-  event.target.value = "";
-});
+}
 
 function getProjectData() {
   const updatedPatterns = structuredClone(patterns);
@@ -865,6 +909,7 @@ async function loadCustomSampleFromBuffer(track, audioBuffer, fileName) {
   updateSampleList();
 }
 
+
 // =======================
 // RESET PROJECT
 // =======================
@@ -969,14 +1014,19 @@ function autosave() {
   });
 });
 
-const savedProject = localStorage.getItem("drumProject");
-
 
 // =======================
 // CUSTOM SAMPLE LOADER FUNCTIONS
 // =======================
 
 let currentEditTrack = 'kick';
+
+function applyReverseIfNeeded(buffer, track) {
+  if (sampleSettings[track]?.reverse) {
+    return reverseBuffer(buffer);
+  }
+  return buffer;
+}
 
 function reverseBuffer(buffer) {
   const reversedBuffer = audioContext.createBuffer(
@@ -1000,10 +1050,7 @@ async function loadCustomSample(track, file) {
     const arrayBuffer = await file.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     
-    let processedBuffer = audioBuffer;
-    if (sampleSettings[track].reverse) {
-      processedBuffer = reverseBuffer(audioBuffer);
-    }
+    let processedBuffer = applyReverseIfNeeded(audioBuffer, track);
     
     customSamples.set(track, {
       buffer: processedBuffer,
@@ -1075,10 +1122,6 @@ function resetTrackToDefault(track) {
   }
 }
 
-function testPlayCurrentSample() {
-  playSound(currentEditTrack, 0);
-}
-
 function playPreview() {
   const tempSettings = {
     volume: parseInt(sampleVolume.value),
@@ -1087,8 +1130,10 @@ function playPreview() {
   };
   
   const buffer = buffers[currentEditTrack];
-  if (!buffer) {
-    return;
+  if (!buffer) return;
+
+  if (tempSettings.reverse) {
+    buffer = reverseBuffer(buffer);
   }
   
   const source = audioContext.createBufferSource();
@@ -1147,13 +1192,11 @@ if (dropZone) {
     dropZone.classList.remove('dragover');
     
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
-    let autoAssigned = false;
     
     for (const file of files) {
       const autoTrack = autoAssignSample(file);
       if (autoTrack) {
         await loadCustomSample(autoTrack, file);
-        autoAssigned = true;
       }
     }
     
@@ -1167,28 +1210,22 @@ if (dropZone) {
       }
     }
   });
-  
-  dropZone.addEventListener('click', () => {
-    sampleUpload.click();
-  });
-  
+
   if (uploadBtn) {
     uploadBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       sampleUpload.click();
     });
   }
-  
+
   if (sampleUpload) {
     sampleUpload.addEventListener('change', async (e) => {
       const files = Array.from(e.target.files);
-      let autoAssigned = false;
       
       for (const file of files) {
         const autoTrack = autoAssignSample(file);
         if (autoTrack) {
           await loadCustomSample(autoTrack, file);
-          autoAssigned = true;
         }
       }
       
@@ -1219,10 +1256,7 @@ if (saveSampleSettings) {
     const customSample = customSamples.get(currentEditTrack);
     if (customSample) {
       customSample.settings = newSettings;
-      let processedBuffer = customSample.buffer;
-      if (newSettings.reverse) {
-        processedBuffer = reverseBuffer(customSample.buffer);
-      }
+      let processedBuffer = applyReverseIfNeeded(customSample.buffer, currentEditTrack);
       buffers[currentEditTrack] = processedBuffer;
     }
     
