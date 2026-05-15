@@ -1092,7 +1092,7 @@ function updateSampleList() {
     item.innerHTML = `
       <div class="sample-name">${track.toUpperCase()}</div>
       <div class="sample-file">${customSample ? customSample.fileName : 'Default sample'}</div>
-      <div class="sample-stats">Vol: ${settings.volume}% | Pitch: ${settings.pitch}x${settings.reverse ? ' | 🔁 Reversed' : ''}</div>
+      <div class="sample-stats">Vol: ${settings.volume}% | Pitch: ${settings.pitch}x${settings.reverse ? ' | Reversed' : ''}</div>
     `;
     
     sampleList.appendChild(item);
