@@ -35,6 +35,11 @@ h1, h2, p {
   margin-bottom: 20px;
 }
 
+
+/* =======================
+   BUTTONS & INPUTS
+   ======================= */
+
 button,
 select,
 input[type="file"] {
@@ -59,14 +64,23 @@ button:hover,
   background: #7c3aed;
 }
 
-.controls,
-.pattern-controls,
-.song-controls {
+
+/* =======================
+   CONTROLS (BPM, SWING)
+   ======================= */
+
+.controls {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
   align-items: center;
 }
+
+
+/* =======================
+   PATTERN SEQUENCER
+   ======================= */
+
 .pattern-controls {
   display: flex;
   flex-wrap: wrap;
@@ -85,13 +99,6 @@ button:hover,
   display: flex;
   gap: 12px;
   align-items: center;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 14px;
 }
 
 .pattern-btn.active {
@@ -151,6 +158,11 @@ label {
   background: #f0a4dc;
 }
 
+
+/* =======================
+   SPECTRUM ANALYSER
+   ======================= */
+
 .spectrum {
   display: grid;
   gap: 14px;
@@ -167,8 +179,83 @@ label {
 .meter div {
   height: 100%;
   width: 0%;
-  background: #38bdf8;
+  background: #7c3aed;
   transition: width 0.08s linear;
+}
+
+
+/* =======================
+   SONG MODE
+   ======================= */
+
+.song-controls {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.song-selector-area {
+  flex: 2;
+  background: #2c2c38;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.song-label {
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+.song-select {
+  padding: 10px;
+  border-radius: 12px;
+  background: #1b1b23;
+  color: white;
+  border: 1px solid #2e2e3a;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.song-select option {
+  background: #1b1b23;
+}
+
+.song-add-btn {
+  background: #7c3aed;
+}
+
+.song-add-btn:hover {
+  background: #6d28d9;
+}
+
+.song-playback-area {
+  flex: 1;
+  background: #2c2c38;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.song-play-btn {
+  background: #7c3aed;
+}
+
+.song-play-btn:hover {
+  background: #6d28d9;
+}
+
+.song-clear-btn {
+  background: #7c3aed;
+}
+
+.song-clear-btn:hover {
+  background: #6d28d9;
 }
 
 .song-order {
@@ -181,7 +268,7 @@ label {
 .song-item {
   padding: 10px 14px;
   border-radius: 12px;
-  background: #2563eb;
+  background: #7c3aed;
 }
 
 .song-item.playing-song-item {
@@ -189,19 +276,90 @@ label {
   color: #111;
 }
 
-.drop-zone {
-  border: 2px dashed #55556a;
-  border-radius: 16px;
-  padding: 30px;
-  text-align: center;
-  margin-bottom: 14px;
-  color: #c4c4cc;
+
+/* =======================
+   SAVE / LOAD PROJECT
+   ======================= */
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
-.drop-zone.dragover {
+.autosave-status {
+  font-size: 15px;
+  color: #888;
+}
+
+.project-controls {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.export-btn {
+  flex: 0 0 auto;
+  padding: 30px 50px;
+  margin-top: 25px;
+  font-size: 14px;
+  font-weight: bold;
+  background: #30303d;
+  border-radius: 12px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+  height: auto;
+}
+
+.export-btn:hover {
+  background: #3c3c4a;
+}
+
+#importDropZone {
+  flex: 2;
+  margin: 0;
+  transition: all 0.2s ease;
+}
+
+#importDropZone.dragover {
   border-color: #38bdf8;
   background: #1e293b;
 }
+
+#importDropZone label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  font-size: 14px;
+}
+
+#import-btn {
+  width: auto;
+  min-width: 160px;
+  padding: 12px 24px;
+  margin-top: 12px;
+  font-size: 14px;
+  background: #30303d;
+  border-radius: 16px;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+#import-btn:hover {
+  background: #3c3c4a;
+}
+
+
+/* =======================
+   EFFECTS RACK
+   ======================= */
 
 .effects-grid {
   display: grid;
@@ -209,24 +367,10 @@ label {
   gap: 16px;
 }
 
-#sampleList {
-  padding-left: 20px;
-}
 
-@media (max-width: 700px) {
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .row {
-    grid-template-columns: 60px repeat(var(--steps), 1fr);
-  }
-
-  .step {
-    height: 38px;
-  }
-}
+/* =======================
+   CUSTOM SAMPLE LOADER
+   ======================= */
 
 .drop-zone {
   border: 2px dashed #55556a;
@@ -241,6 +385,66 @@ label {
   border-color: #38bdf8;
   background: #1e293b;
 }
+
+.sample-loader-container {
+  display: flex;
+  gap: 16px;
+}
+
+#dropZone {
+  flex: 2;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+}
+
+#upload-btn {
+  margin-top: 10px;
+}
+
+.kit-selector-area {
+  flex: 1;
+  background: #2c2c38;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.kit-label {
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+.kit-select {
+  padding: 10px;
+  border-radius: 12px;
+  background: #1b1b23;
+  color: white;
+  border: 1px solid #2e2e3a;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.kit-select option {
+  background: #1b1b23;
+}
+
+.kit-btn {
+  background: #7c3aed;
+}
+
+.kit-btn:hover {
+  background: #6d28d9;
+}
+
+
+/* =======================
+   SAMPLES & SAMPLE EDITOR
+   ======================= */
 
 .sample-list {
   display: grid;
@@ -311,77 +515,30 @@ label {
   display: none;
 }
 
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
 
-.autosave-status {
-  font-size: 15px;
-  color: #888;
-}
+/* =======================
+   LABELS/ RESPONSIVE DESIGN 
+   ======================= */
 
-.project-controls {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start; 
-}
-
-.export-btn {
-  flex: 0 0 auto;
-  padding: 30px 50px;
-  margin-top: 25px;
-  font-size: 14px;
-  font-weight: bold;
-  background: #30303d;
-  border-radius: 12px;
-  border: none;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  line-height: 1;
-  height: auto;
-}
-
-.export-btn:hover {
-  background: #3c3c4a;
-}
-
-#importDropZone {
-  flex: 2;
-  margin: 0;
-  transition: all 0.2s ease;
-}
-
-#importDropZone.dragover {
-  border-color: #38bdf8;
-  background: #1e293b;
-}
-
-#importDropZone label {
+label {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 80px;
+  gap: 6px;
   font-size: 14px;
 }
 
-#import-btn {
-  width: auto;
-  min-width: 160px;
-  padding: 12px 24px;
-  margin-top: 12px;
-  font-size: 14px;
-  background: #30303d;
-  border-radius: 16px;
-  border: none;
-  color: white;
-  cursor: pointer;
-}
 
-#import-btn:hover {
-  background: #3c3c4a;
+@media (max-width: 700px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .row {
+    grid-template-columns: 60px repeat(var(--steps), 1fr);
+  }
+
+  .step {
+    height: 38px;
+  }
 }

@@ -5,6 +5,7 @@ const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 const buffers = {};
 const tracks = ["kick", "snare", "hihat", "tom"];
 const activeSources = [];
+let currentLoadedKit = null;
 
 const defaultPattern = length => ({
   length,
@@ -198,6 +199,8 @@ const exportBtn = document.getElementById('export-btn');
 const importDropZone = document.getElementById('importDropZone');
 const importFileInput = document.getElementById('drop-file');
 const importBtn = document.getElementById('import-btn');
+const kitSelector = document.getElementById('kitSelector');
+const loadKitBtn = document.getElementById('loadKitBtn');
 
 
 // =======================
@@ -233,10 +236,10 @@ async function loadAudio(soundName, url) {
   }
 }
 
-loadAudio("hihat", "./sounds/hihat.wav");
-loadAudio("kick", "./sounds/kick.wav");
-loadAudio("snare", "./sounds/snare.wav");
-loadAudio("tom", "./sounds/tom.wav");
+loadAudio("hihat", "./sounds/defaultSamples/hihat.wav");
+loadAudio("kick", "./sounds/defaultSamples/kick.wav");
+loadAudio("snare", "./sounds/defaultSamples/snare.wav");
+loadAudio("tom", "./sounds/defaultSamples/tom.wav");
 
 
 // =======================
@@ -740,7 +743,6 @@ if (importFileInput) {
 
 async function handleImportFile(file) {
   if (file.name.endsWith('.zip')) {
-    try {
       const zip = await JSZip.loadAsync(file);
       
       const jsonFile = zip.file("project.json");
@@ -754,21 +756,63 @@ async function handleImportFile(file) {
           if (sampleFile) {
             const arrayBuffer = await sampleFile.async("arraybuffer");
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            await loadCustomSampleFromBuffer(track, audioBuffer, `${track}.wav`);
+            
+            let processedBuffer = audioBuffer;
+            if (sampleSettings[track].reverse) {
+              processedBuffer = reverseBuffer(audioBuffer);
+            }
+            
+            let kitName = null;
+            if (projectData.customSamples && projectData.customSamples[track]) {
+              kitName = projectData.customSamples[track].kitName || null;
+            }
+            
+            customSamples.set(track, {
+              buffer: processedBuffer,
+              fileName: kitName ? `${kitName} ${track}` : `${track}.wav`,
+              settings: { ...sampleSettings[track] },
+              kitName: kitName
+            });
+            
+            buffers[track] = processedBuffer;
           }
         }
       }
       
       loadProjectData(projectData);
-    } catch (error) {
-      console.error(error);
-    }
+      
+      // Restore kit selector
+      if (projectData.currentLoadedKit && projectData.currentLoadedKit !== 'null') {
+        currentLoadedKit = projectData.currentLoadedKit;
+        if (kitSelector) {
+          kitSelector.value = currentLoadedKit;
+        }
+      } else {
+        currentLoadedKit = null;
+        if (kitSelector) {
+          kitSelector.value = "";
+        }
+      }
+      
+      updateSampleList();
   } else if (file.name.endsWith('.json')) {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
         const project = JSON.parse(reader.result);
         loadProjectData(project);
+        
+        for (const track of ['kick', 'snare', 'hihat', 'tom']) {
+          buffers[track] = defaultBuffers[track] || buffers[track];
+          customSamples.delete(track);
+        }
+        
+        currentLoadedKit = null;
+        if (kitSelector) {
+          kitSelector.value = "";
+        }
+        
+        updateSampleList();
       } catch (error) {
         console.error(error);
       }
@@ -781,6 +825,15 @@ function getProjectData() {
   const updatedPatterns = structuredClone(patterns);
   updatedPatterns[currentPattern] = sequencer.getPattern();
 
+  const customSamplesInfo = {};
+  for (const [track, sample] of customSamples.entries()) {
+    customSamplesInfo[track] = {
+      fileName: sample.fileName,
+      settings: sample.settings,
+      kitName: sample.kitName || null
+    };
+  }
+
   return {
     bpm: sequencer.bpm,
     swing: sequencer.swing,
@@ -788,7 +841,9 @@ function getProjectData() {
     patterns: updatedPatterns,
     songOrder: structuredClone(songOrder),
     effects: structuredClone(effects),
-    sampleSettings: structuredClone(sampleSettings)
+    sampleSettings: structuredClone(sampleSettings),
+    customSamples: customSamplesInfo,
+    currentLoadedKit: currentLoadedKit
   };
 }
 
@@ -823,6 +878,32 @@ function loadProjectData(project) {
 
   if (project.sampleSettings) {
     Object.assign(sampleSettings, project.sampleSettings);
+  }
+
+  if (project.customSamples) {
+    for (const [track, data] of Object.entries(project.customSamples)) {
+      if (data) {
+        customSamples.set(track, {
+          buffer: buffers[track],
+          fileName: data.fileName,
+          settings: data.settings || sampleSettings[track],
+          kitName: data.kitName || null
+        });
+      }
+    }
+  }
+
+  // Restore kit selector
+  if (project.currentLoadedKit && project.currentLoadedKit !== 'null') {
+    currentLoadedKit = project.currentLoadedKit;
+    if (kitSelector) {
+      kitSelector.value = currentLoadedKit;
+    }
+  } else {
+    currentLoadedKit = null;
+    if (kitSelector) {
+      kitSelector.value = "";
+    }
   }
 
   updateEffectsUI();
@@ -893,7 +974,7 @@ function writeString(view, offset, str) {
   }
 }
 
-async function loadCustomSampleFromBuffer(track, audioBuffer, fileName) {
+async function loadCustomSampleFromBuffer(track, audioBuffer, fileName, kitName = null) {
   let processedBuffer = audioBuffer;
   if (sampleSettings[track].reverse) {
     processedBuffer = reverseBuffer(audioBuffer);
@@ -902,7 +983,8 @@ async function loadCustomSampleFromBuffer(track, audioBuffer, fileName) {
   customSamples.set(track, {
     buffer: processedBuffer,
     fileName: fileName,
-    settings: { ...sampleSettings[track] }
+    settings: { ...sampleSettings[track] },
+    kitName: kitName
   });
   
   buffers[track] = processedBuffer;
@@ -985,6 +1067,15 @@ function resetProject() {
     resetTrackToDefault(track);
   });
 
+  if (kitSelector) {
+    kitSelector.value = "";
+  }
+
+  const songPatternSelect = document.getElementById('songPatternSelect');
+  if (songPatternSelect) {
+    songPatternSelect.value = "A";
+  }
+
   updateEffectsUI();
   updateAudioEffects();
   renderGrid();
@@ -1016,7 +1107,7 @@ function autosave() {
 
 
 // =======================
-// CUSTOM SAMPLE LOADER FUNCTIONS
+// SAMPLE LOADER AND EDITOR 
 // =======================
 
 let currentEditTrack = 'kick';
@@ -1050,24 +1141,32 @@ async function loadCustomSample(track, file) {
     const arrayBuffer = await file.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     
-    let processedBuffer = applyReverseIfNeeded(audioBuffer, track);
+    let processedBuffer = audioBuffer;
+    if (sampleSettings[track].reverse) {
+      processedBuffer = reverseBuffer(audioBuffer);
+    }
     
     customSamples.set(track, {
       buffer: processedBuffer,
       fileName: file.name,
-      settings: { ...sampleSettings[track] }
+      settings: { ...sampleSettings[track] },
+      kitName: null
     });
     
     buffers[track] = processedBuffer;
     updateSampleList();
-
+    
+    currentLoadedKit = null;
+    if (kitSelector) {
+      kitSelector.value = "";
+    }
+    
     return true;
   } catch (error) {
     console.error(error);
     return false;
   }
 }
-
 
 function updateSampleList() {
   if (!sampleList) return;
@@ -1078,6 +1177,15 @@ function updateSampleList() {
   trackNames.forEach(track => {
     const customSample = customSamples.get(track);
     const settings = sampleSettings[track];
+    
+    let displayName = 'Default sample';
+    if (customSample) {
+      if (customSample.kitName) {
+        displayName = customSample.kitName;
+      } else {
+        displayName = customSample.fileName;
+      }
+    }
     
     const item = document.createElement('div');
     item.className = 'sample-item';
@@ -1091,7 +1199,7 @@ function updateSampleList() {
     
     item.innerHTML = `
       <div class="sample-name">${track.toUpperCase()}</div>
-      <div class="sample-file">${customSample ? customSample.fileName : 'Default sample'}</div>
+      <div class="sample-file">${displayName}</div>
       <div class="sample-stats">Vol: ${settings.volume}% | Pitch: ${settings.pitch}x${settings.reverse ? ' | Reversed' : ''}</div>
     `;
     
@@ -1114,7 +1222,7 @@ function resetTrackToDefault(track) {
   sampleSettings[track] = { volume: 100, pitch: 1, reverse: false };
   customSamples.delete(track);
 
-  loadAudio(track, `./sounds/${track}.wav`);
+  loadAudio(track, `./sounds/defaultSamples/${track}.wav`);
   updateSampleList();
   
   if (currentEditTrack === track) {
@@ -1299,8 +1407,103 @@ if (sampleReverse) {
 
 
 // =======================
+// PRESET KITS
+// =======================
+
+const presetKits = {
+  acoustic: {
+    name: 'Acoustic Kit',
+    samples: {
+      kick: './sounds/acoustic/kick.wav',
+      snare: './sounds/acoustic/snare.wav',
+      hihat: './sounds/acoustic/hihat.wav',
+      tom: './sounds/acoustic/tom.wav'
+    }
+  },
+  electronic: {
+    name: 'Electronic Kit',
+    samples: {
+      kick: './sounds/electronic/kick.wav',
+      snare: './sounds/electronic/snare.wav',
+      hihat: './sounds/electronic/hihat.wav',
+      tom: './sounds/electronic/tom.wav'
+    }
+  },
+  vintage: {
+    name: 'Vintage Kit',
+    samples: {
+      kick: './sounds/vintage/kick.wav',
+      snare: './sounds/vintage/snare.wav',
+      hihat: './sounds/vintage/hihat.wav',
+      tom: './sounds/vintage/tom.wav'
+    }
+  },
+  'lo-fi': {
+    name: 'Lo-Fi Kit',
+    samples: {
+      kick: './sounds/lo-fi/kick.wav',
+      snare: './sounds/lo-fi/snare.wav',
+      hihat: './sounds/lo-fi/hihat.wav',
+      tom: './sounds/lo-fi/tom.wav'
+    }
+  }
+};
+
+async function loadPresetKit(kitId) {
+  const kit = presetKits[kitId];
+  if (!kit) return;
+  
+  const trackNames = ['kick', 'snare', 'hihat', 'tom'];
+  
+  for (const track of trackNames) {
+    const url = kit.samples[track];
+    if (!url) continue;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to load ${track}`);
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      let processedBuffer = audioBuffer;
+      if (sampleSettings[track].reverse) {
+        processedBuffer = reverseBuffer(audioBuffer);
+      }
+      
+      customSamples.set(track, {
+        buffer: processedBuffer,
+        fileName: `${kit.name} ${track}.wav`,
+        settings: { ...sampleSettings[track] },
+        kitName: kit.name
+      });
+      
+      buffers[track] = processedBuffer;
+    } catch (error) {
+      console.error(`Failed to load ${track}:`, error);
+    }
+  }
+  
+  currentLoadedKit = kitId;
+  
+  updateSampleList();
+}
+
+if (loadKitBtn) {
+  loadKitBtn.addEventListener('click', async () => {
+    const selectedKit = kitSelector.value;
+    if (!selectedKit) {
+      return;
+    }
+    await loadPresetKit(selectedKit);
+  });
+}
+
+
+// =======================
 // Initialization
 // =======================
+
 renderGrid();
 renderSongOrder();
 updateEffectsUI();

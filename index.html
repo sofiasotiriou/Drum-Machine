@@ -95,16 +95,21 @@
       <h2>Song Mode</h2>
 
       <div class="song-controls">
-        <select id="songPatternSelect">
-          <option value="A">A</option>
-          <option value="B">B</option>
-          <option value="C">C</option>
-          <option value="D">D</option>
-        </select>
-
-        <button id="addToSong">Add Pattern</button>
-        <button id="playSong">Play Song</button>
-        <button id="clearSong">Clear Song</button>
+        <div class="song-selector-area">
+          <label class="song-label">Add Pattern to Song</label>
+          <select id="songPatternSelect" class="song-select">
+            <option value="A">Pattern A</option>
+            <option value="B">Pattern B</option>
+            <option value="C">Pattern C</option>
+            <option value="D">Pattern D</option>
+          </select>
+          <button id="addToSong" class="primary-btn song-add-btn">Add Pattern</button>
+        </div>
+        
+        <div class="song-playback-area">
+          <button id="playSong" class="primary-btn song-play-btn">Play Song</button>
+          <button id="clearSong" class="primary-btn song-clear-btn">Clear Song</button>
+        </div>
       </div>
 
       <div id="songOrder" class="song-order"></div>
@@ -145,14 +150,29 @@
 
     <section class="panel">
       <h2>Custom Sample Loader</h2>
-
-      <div class="drop-zone" id="dropZone">
-        <div style="display: block;">
-          Drag & Drop audio files here (WAV, MP3) or click to upload
-          <input type="file" id="sampleUpload" multiple accept="audio/*" style="display: none">
+      
+      <div class="sample-loader-container">
+        <div class="kit-selector-area">
+          <label class="kit-label">Load Preset Kit</label>
+          <select id="kitSelector" class="kit-select">
+            <option value="">-- Select a kit --</option>
+            <option value="acoustic">Acoustic Kit</option>
+            <option value="electronic">Electronic Kit</option>
+            <option value="vintage">Vintage Kit</option>
+            <option value="lo-fi">Lo-Fi Kit</option>
+          </select>
+          <button id="loadKitBtn" class="primary-btn kit-btn">Load Kit</button>
         </div>
-        <button id="upload-btn" class="primary-btn" style="margin-top: 10px;">Upload Samples</button>
+        
+        <div class="drop-zone" id="dropZone">
+          <div>
+            Drag & Drop audio files here (WAV, MP3) or click to upload
+            <input type="file" id="sampleUpload" multiple accept="audio/*" style="display: none">
+            <button id="upload-btn" class="primary-btn">Upload Samples</button>
+          </div>
+        </div>
       </div>
+      
     </section>
 
     <section class="panel">
